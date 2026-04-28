@@ -35,7 +35,7 @@ export default function AdminDashboard() {
   if (!_hasHydrated || !estaAutenticado || !usuarioActual) return null;
 
   // Agrupar salones por grupoEdad
-  const gruposUnicos = [...new Set(salones.map((s) => s.grupoEdad))];
+  const gruposUnicos = Array.from(new Set(salones.map((s) => s.grupoEdad)));
   const resumenGrupos = gruposUnicos.map((grupo) => {
     const salonesGrupo = salones.filter((s) => s.grupoEdad === grupo);
     const totalAlumnos = salonesGrupo.reduce(
