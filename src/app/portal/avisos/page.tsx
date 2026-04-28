@@ -27,7 +27,7 @@ function formatFecha(iso: string) {
 
 export default function AvisosPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const { avisos, agregarAviso, eliminarAviso, actualizarAviso } = useAvisosStore();
 
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -40,8 +40,9 @@ export default function AvisosPage() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

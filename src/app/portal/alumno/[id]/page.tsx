@@ -36,7 +36,7 @@ export default function PerfilAlumnoPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const { estaAutenticado } = useAuthStore();
+  const { estaAutenticado, _hasHydrated } = useAuthStore();
   const alumno = useAlumnosStore((s) => s.obtenerAlumnoPorId(id));
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
@@ -44,8 +44,9 @@ export default function PerfilAlumnoPage() {
   const personal = usePersonalStore((s) => s.personal);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!alumno) {
     return (

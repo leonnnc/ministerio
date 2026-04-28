@@ -15,7 +15,7 @@ function formatFecha(iso: string) {
 
 export default function OracionesPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const { oraciones, agregarOracion, actualizarOracion, eliminarOracion } = useOracionesStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
 
@@ -29,8 +29,9 @@ export default function OracionesPage() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

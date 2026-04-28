@@ -26,7 +26,7 @@ function formatFecha(iso: string) {
 
 export default function GaleriaPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const { fotos, agregarFoto, eliminarFoto } = useGaleriaStore();
   const { eventos } = useEventosStore();
 
@@ -40,8 +40,9 @@ export default function GaleriaPage() {
   const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

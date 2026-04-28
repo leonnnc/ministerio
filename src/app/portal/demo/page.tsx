@@ -121,7 +121,7 @@ const NINOS_DEMO = [
 
 export default function DemoPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const { agregarPersonal } = usePersonalStore();
   const { agregarAlumno } = useAlumnosStore();
   const { inicializarSalones, asignarMaestro } = useSalonesStore();

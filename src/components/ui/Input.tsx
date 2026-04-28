@@ -12,17 +12,18 @@ export default function Input({
   helperText,
   id,
   className = '',
+  required,   // interceptado — no se pasa al input nativo para evitar validación del navegador
   ...props
 }: InputProps) {
-  const inputId = id ?? (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  // Genera un id limpio: sin asteriscos ni caracteres especiales
+  const inputId = id ?? (label
+    ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    : undefined);
 
   return (
     <div className="flex flex-col gap-1 w-full">
       {label && (
-        <label
-          htmlFor={inputId}
-          className="text-sm font-medium text-gray-700"
-        >
+        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
           {label}
         </label>
       )}

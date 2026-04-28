@@ -39,7 +39,7 @@ function descargarCSV(contenido: string, nombre: string) {
 
 export default function ReportePage() {
   const router = useRouter();
-  const { estaAutenticado } = useAuthStore();
+  const { estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
@@ -52,6 +52,7 @@ export default function ReportePage() {
   const [generando, setGenerando] = useState(false);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
     // Defaults: último mes
     const hoy = new Date();
@@ -59,7 +60,7 @@ export default function ReportePage() {
     hace30.setDate(hoy.getDate() - 30);
     setFechaDesde(hace30.toISOString().split('T')[0]);
     setFechaHasta(hoy.toISOString().split('T')[0]);
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   const alumnosFiltrados = alumnos.filter((a) =>
     salonFiltro === 'todos' || a.salonId === salonFiltro

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Salon } from '@/types';
 import type { GrupoEdad } from '@/types';
-import { CONFIGURACION_SALONES } from '@/lib/asignacionSalon';
+import { SALONES_POR_EDAD } from '@/lib/asignacionSalon';
 import {
   guardarSalon,
   actualizarSalon,
@@ -19,29 +19,22 @@ export const useSalonesStore = create<SalonesState>()((set, get) => ({
   salones: [],
 
   inicializarSalones: async () => {
-    // Verificar si ya existen en Firestore
     const existentes = await obtenerSalones();
     if (existentes.length > 0) {
       set({ salones: existentes });
       return;
     }
 
-    // Crear los 4 salones base
-    const salones: Salon[] = (
-      Object.entries(CONFIGURACION_SALONES) as [
-        GrupoEdad,
-        { edadMinima: number; edadMaxima: number; nombre: string },
-      ][]
-    ).map(([grupoEdad, config]) => ({
+    // Crear 12 salones — Cuna (1 salón 0-2 años) + 11 salones individuales por edad
+    const salones: Salon[] = SALONES_POR_EDAD.map((config) => ({
       id: crypto.randomUUID(),
       nombre: config.nombre,
-      grupoEdad,
+      grupoEdad: config.grupoEdad as GrupoEdad,
       edadMinima: config.edadMinima,
       edadMaxima: config.edadMaxima,
       auxiliaresIds: [],
     }));
 
-    // Guardar en Firestore
     await Promise.all(salones.map((s) => guardarSalon(s)));
     set({ salones });
   },

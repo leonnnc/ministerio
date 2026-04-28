@@ -27,6 +27,14 @@ const VIDEOS = [
   { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Mensaje para los niños' },
   { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Actividades especiales' },
   { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Testimonio de familias' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Culto de niños' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Campamento 2024' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Día del niño' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Navidad especial' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Semana santa' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Graduación 2024' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Retiro espiritual' },
+  { src: 'https://www.youtube.com/embed/dQw4w9WgXcQ', titulo: 'Aniversario ministerio' },
 ];
 
 // Descripción de actividades por grupo
@@ -137,7 +145,7 @@ export default function Home() {
       {/* ── 1. HERO carrusel ── */}
       <CarruselFondo items={MEDIA_CARRUSEL} intervalo={6000}>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg mb-4">
-          ✝️ Ministerio de Niños
+          Ministerio de Niños
         </h1>
         <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-10 drop-shadow">
           Formando el corazón de los niños con amor, fe y propósito.
@@ -264,9 +272,11 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-2" style={{ color: '#E65100' }}>Videos del Ministerio</h2>
           <p className="text-center mb-10" style={{ color: '#F57F17' }}>Revive los mejores momentos</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {VIDEOS.map((video, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden shadow-md border-2 border-yellow-200" style={{ background: '#FFFDE7' }}>
+              <div key={i}
+                className={`rounded-2xl overflow-hidden shadow-md border-2 border-yellow-200 ${i >= 4 ? 'hidden lg:block' : ''}`}
+                style={{ background: '#FFFDE7' }}>
                 <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                   <iframe src={video.src} title={video.titulo}
                     className="absolute inset-0 w-full h-full"
@@ -278,6 +288,32 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Enlace para ver más videos — visible solo en móvil */}
+          <div className="mt-6 text-center lg:hidden">
+            <a
+              href="https://www.youtube.com/@ministeriodeninos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-bold px-6 py-3 rounded-xl text-sm transition-all hover:scale-105"
+              style={{ background: '#F5C518', color: '#4a2c00' }}
+            >
+              ▶ Ver todos los videos del ministerio
+            </a>
+          </div>
+
+          {/* Enlace para ver más — visible en todos */}
+          <div className="mt-6 text-center">
+            <a
+              href="https://www.youtube.com/@ministeriodeninos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4 transition-colors hover:opacity-70"
+              style={{ color: '#E65100' }}
+            >
+              🎬 Ver más videos en nuestro canal de YouTube →
+            </a>
           </div>
         </div>
       </section>

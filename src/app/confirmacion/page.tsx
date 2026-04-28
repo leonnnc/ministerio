@@ -18,17 +18,20 @@ function formatearFecha(fechaISO: string): string {
 }
 
 function TarjetaCompleta({ alumno, apoderado, salon }: { alumno: Alumno; apoderado: Apoderado; salon: Salon }) {
-  const qrValue = alumno.codigoQR ?? alumno.id;
+  // El QR apunta a la URL de verificación del niño
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const qrValue = `${baseUrl}/verificar/${alumno.codigoQR ?? alumno.id}`;
+  const codigoMostrar = alumno.codigoQR ?? alumno.id;
 
   return (
     <div className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden shadow-2xl border-2 border-yellow-300 bg-white">
-      {/* Header */}
+      {/* Header — sin cruz */}
       <div className="px-5 py-4 text-center" style={{ background: '#F5C518' }}>
-        <p className="font-extrabold text-lg" style={{ color: '#4a2c00' }}>✝️ Ministerio de Niños</p>
+        <p className="font-extrabold text-lg" style={{ color: '#4a2c00' }}>Ministerio de Niños</p>
         <p className="text-xs mt-0.5" style={{ color: '#78350f' }}>Tarjeta de Identificación</p>
       </div>
 
-      {/* Foto + nombre */}
+      {/* Foto */}
       <div className="flex flex-col items-center pt-5 pb-3 px-5">
         {alumno.fotografiaUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -41,11 +44,11 @@ function TarjetaCompleta({ alumno, apoderado, salon }: { alumno: Alumno; apodera
           </div>
         )}
 
-        {/* QR debajo de la foto */}
+        {/* QR — apunta a página de verificación */}
         <div className="mt-3 p-2 bg-white rounded-xl border border-yellow-200 shadow-sm">
           <QRCode value={qrValue} size={80} />
         </div>
-        <p className="text-xs text-gray-400 mt-1 font-mono">{qrValue}</p>
+        <p className="text-xs text-gray-400 mt-1 font-mono">{codigoMostrar}</p>
       </div>
 
       {/* Datos del niño */}
@@ -81,13 +84,29 @@ function TarjetaCompleta({ alumno, apoderado, salon }: { alumno: Alumno; apodera
           )}
         </div>
 
-        {/* Apoderado */}
+        {/* Apoderado — teléfono solo una vez */}
         <div className="rounded-xl p-3 space-y-1 text-sm border border-yellow-100" style={{ background: '#FFF9C4' }}>
-          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#D97706' }}>Apoderado</p>
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#D97706' }}>
+            {apoderado.relacion === 'padre' ? 'Padre' : apoderado.relacion === 'madre' ? 'Madre' : 'Apoderado'}
+          </p>
           <p className="font-semibold" style={{ color: '#4a2c00' }}>{apoderado.nombreCompleto}</p>
           <p className="text-gray-600">📞 {apoderado.telefono}</p>
-          {apoderado.telefonoEmergencia && (
-            <p className="text-gray-600">🚨 {apoderado.telefonoEmergencia}</p>
+          {apoderado.telefonoEmergencia && (() => {
+            const telPrincipal = apoderado.telefono.replace(/\D/g, '').slice(-9);
+            const telEmergencia = apoderado.telefonoEmergencia.replace(/\D/g, '').slice(-9);
+            const mismoNumero = telPrincipal === telEmergencia;
+            const mismoNombre = !apoderado.nombreEmergencia ||
+              apoderado.nombreEmergencia.trim().toLowerCase() === apoderado.nombreCompleto.trim().toLowerCase();
+            if (mismoNumero && mismoNombre) return null;
+            return (
+              <p className="text-gray-600">
+                🚨 {apoderado.telefonoEmergencia}
+                {apoderado.nombreEmergencia && ` — ${apoderado.nombreEmergencia}`}
+              </p>
+            );
+          })()}
+          {apoderado.email && (
+            <p className="text-gray-600">✉️ {apoderado.email}</p>
           )}
           {apoderado.distrito && (
             <p className="text-gray-500 text-xs">{apoderado.distrito}, {apoderado.departamento ?? 'Lima'}</p>
@@ -107,27 +126,27 @@ function ConfirmacionContent() {
   const salones = useSalonesStore((s) => s.salones);
 
   const [descargando, setDescargando] = useState(false);
-  const [esperando, setEsperando] = useState(true);
+  const [enviandoWA, setEnviandoWA] = useState(false);
+  const [intentos, setIntentos] = useState(0);
+  const tarjetaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setEsperando(false), 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (esperando && !alumno) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6" style={{ background: '#FFFDE7' }}>
-        <Spinner size="lg" />
-        <p className="text-gray-500 text-sm">Cargando datos del registro...</p>
-      </div>
-    );
-  }
+    if (alumno) return;
+    if (intentos >= 10) return;
+    const t = setTimeout(() => setIntentos((n) => n + 1), 300);
+    return () => clearTimeout(t);
+  }, [alumno, intentos]);
 
   if (!alumno) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6" style={{ background: '#FFFDE7' }}>
-        <p className="text-red-600 text-lg font-semibold">No se encontró el alumno registrado.</p>
-        <Link href="/inscripcion" className="underline" style={{ color: '#D97706' }}>Volver a inscripción</Link>
+        <Spinner size="lg" />
+        <p className="text-gray-500 text-sm">Cargando datos del registro...</p>
+        {intentos >= 10 && (
+          <Link href="/inscripcion" className="underline text-sm" style={{ color: '#D97706' }}>
+            Volver a inscripción
+          </Link>
+        )}
       </div>
     );
   }
@@ -151,19 +170,53 @@ function ConfirmacionContent() {
     finally { setDescargando(false); }
   }
 
-  function compartirWhatsApp() {
-    const qr = alumno!.codigoQR ?? alumno!.id;
-    const msg = encodeURIComponent(
-      `✝️ *Ministerio de Niños*\n\n` +
-      `Hola ${apoderado!.nombreCompleto}, tu hijo/a *${alumno!.nombreCompleto}* ha sido inscrito exitosamente.\n\n` +
-      `📋 *Salón:* ${salon!.nombre}\n` +
-      `🎂 *Nacimiento:* ${formatearFecha(alumno!.fechaNacimiento)}\n` +
-      `🔑 *Código QR:* ${qr}\n\n` +
-      `Presenta este código al dejar y recoger a tu hijo/a. ¡Dios te bendiga! 🙏`
-    );
-    const tel = apoderado!.whatsapp ?? apoderado!.telefono;
-    const numero = tel.replace(/\D/g, '');
-    window.open(`https://wa.me/${numero}?text=${msg}`, '_blank');
+  async function compartirWhatsAppConPDF() {
+    if (!alumno || !apoderado || !salon) return;
+    setEnviandoWA(true);
+    try {
+      // Capturar la tarjeta como imagen
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(tarjetaRef.current!, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+
+      const imageDataUrl = canvas.toDataURL('image/png');
+
+      // Intentar compartir con Web Share API (móvil)
+      if (navigator.share && navigator.canShare) {
+        const blob = await (await fetch(imageDataUrl)).blob();
+        const file = new File([blob], `tarjeta-${alumno.nombreCompleto.replace(/\s+/g, '-')}.png`, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Tarjeta Ministerio de Niños',
+            text: `Tarjeta de ${alumno.nombreCompleto}`,
+            files: [file],
+          });
+          return;
+        }
+      }
+
+      // Fallback: descargar imagen + abrir WhatsApp
+      const link = document.createElement('a');
+      link.href = imageDataUrl;
+      link.download = `tarjeta-${alumno.nombreCompleto.replace(/\s+/g, '-')}.png`;
+      link.click();
+
+      // Abrir WhatsApp con instrucción de adjuntar la imagen
+      const tel = apoderado.whatsapp ?? apoderado.telefono;
+      const numero = tel.replace(/\D/g, '');
+      const msg = encodeURIComponent(
+        `*Ministerio de Ninos*\n\nHola ${apoderado.nombreCompleto}, adjunto la tarjeta de inscripcion de *${alumno.nombreCompleto}*.\n\nSalon: ${salon.nombre}\nCodigo: ${alumno.codigoQR ?? alumno.id}\n\nPresenta este codigo cada domingo. Dios te bendiga!`
+      );
+      setTimeout(() => {
+        window.open(`https://wa.me/${numero}?text=${msg}`, '_blank');
+      }, 500);
+
+    } finally {
+      setEnviandoWA(false);
+    }
   }
 
   return (
@@ -177,17 +230,22 @@ function ConfirmacionContent() {
           <p className="text-gray-600 mt-1">El niño ha sido registrado correctamente en el ministerio.</p>
         </div>
 
-        {/* Tarjeta completa con QR */}
-        <TarjetaCompleta alumno={alumno} apoderado={apoderado} salon={salon} />
+        {/* Tarjeta */}
+        <div ref={tarjetaRef}>
+          <TarjetaCompleta alumno={alumno} apoderado={apoderado} salon={salon} />
+        </div>
 
         {/* Acciones */}
         <div className="flex flex-col gap-3">
-          <button onClick={compartirWhatsApp}
-            className="w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2 text-sm"
+          {/* WhatsApp — descarga PDF y abre WhatsApp */}
+          <button onClick={compartirWhatsAppConPDF} disabled={enviandoWA}
+            className="w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2 text-sm disabled:opacity-60"
             style={{ background: '#25D366' }}>
-            <span className="text-lg">📱</span> Enviar por WhatsApp al apoderado
+            <span className="text-lg">📱</span>
+            {enviandoWA ? 'Preparando PDF...' : 'Enviar por WhatsApp (con PDF)'}
           </button>
 
+          {/* Descargar PDF */}
           <Button onClick={handleDescargarPDF} loading={descargando} className="w-full"
             style={{ background: '#F5C518', color: '#4a2c00', border: 'none' }}>
             {descargando ? 'Generando PDF...' : '📄 Descargar tarjeta PDF'}

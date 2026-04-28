@@ -166,7 +166,7 @@ function TarjetaDetalle({
 
 export default function BuscarPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
@@ -177,8 +177,9 @@ export default function BuscarPage() {
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState<Alumno | null>(null);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

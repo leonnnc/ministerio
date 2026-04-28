@@ -45,14 +45,15 @@ const ROL_LABEL: Record<string, string> = {
 
 export default function CumpleanosPage() {
   const router = useRouter();
-  const { estaAutenticado } = useAuthStore();
+  const { estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const personal = usePersonalStore((s) => s.personal);
   const salones = useSalonesStore((s) => s.salones);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   const mesActual = getMesActual();
   const diaActual = getDiaActual();

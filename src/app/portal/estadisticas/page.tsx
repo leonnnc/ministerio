@@ -29,15 +29,16 @@ const GRUPO_NOMBRES: Record<string, string> = {
 
 export default function EstadisticasPage() {
   const router = useRouter();
-  const { estaAutenticado } = useAuthStore();
+  const { estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const salones = useSalonesStore((s) => s.salones);
   const personal = usePersonalStore((s) => s.personal);
   const registros = useAsistenciaStore((s) => s.registros);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   // Alumnos por salón
   const alumnosPorSalon = salones.map((s) => ({

@@ -25,14 +25,15 @@ function calcularEdad(fechaNacimiento: string): number {
 
 export default function PrimerasVisitasPage() {
   const router = useRouter();
-  const { estaAutenticado } = useAuthStore();
+  const { estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   // Niños marcados como primera vez, ordenados por fecha de registro más reciente
   const primerasVisitas = alumnos

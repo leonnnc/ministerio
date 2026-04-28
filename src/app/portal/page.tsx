@@ -29,7 +29,7 @@ const rolColor: Record<Rol, 'primary' | 'success' | 'info' | 'secondary' | 'warn
 
 export default function PortalPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
@@ -43,8 +43,9 @@ export default function PortalPage() {
   }, [inicializarSalones]);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

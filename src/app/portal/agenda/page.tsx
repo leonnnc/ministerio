@@ -26,7 +26,7 @@ const SERVICIO_COLORES: Record<ServicioId, { bg: string; border: string; badge: 
 
 export default function AgendaPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const { obtenerPorFechaYServicio, eliminarAsignacion } = useAgendaStore();
   const personal = usePersonalStore((s) => s.personal);
   const salones = useSalonesStore((s) => s.salones);
@@ -40,7 +40,8 @@ export default function AgendaPage() {
   const [servicioModal, setServicioModal] = useState<ServicioId | null>(null);
 
   useEffect(() => { inicializarSalones(); }, [inicializarSalones]);
-  useEffect(() => { if (!estaAutenticado) router.replace('/login'); }, [estaAutenticado, router]);
+  useEffect(() => { if (!_hasHydrated) return;
+    if (!estaAutenticado) router.replace('/login'); }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

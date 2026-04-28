@@ -5,45 +5,103 @@ import { useRouter } from 'next/navigation';
 import FormularioInscripcion from '@/components/forms/FormularioInscripcion';
 import { useAlumnosStore } from '@/stores/alumnosStore';
 import { useSalonesStore } from '@/stores/salonesStore';
-import { asignarSalon } from '@/lib/asignacionSalon';
-import type { Alumno, Apoderado } from '@/types';
+import { calcularEdadParaSalon, SALONES_POR_EDAD } from '@/lib/asignacionSalon';
+import { guardarSalon } from '@/lib/firestore/salonesService';
+import { guardarAlumno } from '@/lib/firestore/alumnosService';
+import type { Alumno, Apoderado, Salon } from '@/types';
 
 export default function InscripcionPage() {
   const router = useRouter();
-  const { agregarAlumno } = useAlumnosStore();
-  const { salones, inicializarSalones } = useSalonesStore();
+  const { inicializarSalones } = useSalonesStore();
   const [errorEdad, setErrorEdad] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
 
+  // Cargar salones al montar (en background, no bloquea)
   useEffect(() => {
-    inicializarSalones();
+    inicializarSalones().catch(() => {});
   }, [inicializarSalones]);
+
+  function obtenerOCrearSalon(edad: number): Salon {
+    // Buscar en store local (instantáneo, sin Firestore)
+    const salonesActuales = useSalonesStore.getState().salones;
+    const existente = salonesActuales.find((s) => edad >= s.edadMinima && edad <= s.edadMaxima);
+    if (existente) return existente;
+
+    // Crear salón localmente si no existe
+    const config = SALONES_POR_EDAD.find((c) => edad >= c.edadMinima && edad <= c.edadMaxima);
+    const nuevoSalon: Salon = {
+      id: crypto.randomUUID(),
+      nombre: config?.nombre ?? `Salón ${edad} años`,
+      grupoEdad: config?.grupoEdad ?? 'SegundoNivel',
+      edadMinima: config?.edadMinima ?? edad,
+      edadMaxima: config?.edadMaxima ?? edad,
+      auxiliaresIds: [],
+    };
+
+    // Actualizar store local inmediatamente
+    useSalonesStore.setState((state) => ({ salones: [...state.salones, nuevoSalon] }));
+
+    // Sincronizar con Firestore en background
+    guardarSalon(nuevoSalon).catch(() => {});
+
+    return nuevoSalon;
+  }
 
   async function onExito(alumno: Alumno, apoderado: Apoderado) {
     setErrorEdad(null);
+    setCargando(true);
 
-    let grupoEdad;
     try {
-      grupoEdad = asignarSalon(alumno.fechaNacimiento);
-    } catch {
-      setErrorEdad('El niño no cumple el rango de edad del ministerio (0–13 años)');
-      return;
+      // 1. Calcular edad (instantáneo)
+      let edad: number | null;
+      try {
+        edad = calcularEdadParaSalon(alumno.fechaNacimiento);
+      } catch {
+        setErrorEdad('La fecha de nacimiento no puede ser una fecha futura');
+        setCargando(false);
+        return;
+      }
+
+      if (edad === null) {
+        setErrorEdad('El niño no cumple el rango de edad del ministerio (0–13 años)');
+        setCargando(false);
+        return;
+      }
+
+      // 2. Obtener salón (instantáneo, sin await)
+      const salon = obtenerOCrearSalon(edad);
+
+      // 3. Construir alumno con salonId
+      const alumnoConSalon: Alumno = { ...alumno, salonId: salon.id };
+
+      // 4. Guardar en Firestore PRIMERO (con timeout de 8s)
+      try {
+        await Promise.race([
+          guardarAlumno(alumnoConSalon, apoderado),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ]);
+        console.log('✅ Alumno guardado en Firestore:', alumnoConSalon.id);
+      } catch (e) {
+        console.error('❌ Error guardando en Firestore:', e);
+        setErrorEdad(`Error al guardar en la base de datos: ${e}. Verifica las reglas de Firestore.`);
+        setCargando(false);
+        return;
+      }
+
+      // 5. Actualizar store local
+      useAlumnosStore.setState((state) => ({
+        alumnos: [...state.alumnos, alumnoConSalon],
+        apoderados: [...state.apoderados, apoderado],
+      }));
+
+      // 6. Redirigir a confirmación
+      router.push(`/confirmacion?alumnoId=${alumnoConSalon.id}`);
+
+    } catch (err) {
+      setErrorEdad('Error al inscribir. Intenta nuevamente.');
+      console.error(err);
+      setCargando(false);
     }
-
-    if (grupoEdad === null) {
-      setErrorEdad('El niño no cumple el rango de edad del ministerio (0–13 años)');
-      return;
-    }
-
-    const salon = salones.find((s) => s.grupoEdad === grupoEdad);
-    if (!salon) {
-      setErrorEdad('No se encontró el salón correspondiente. Intente nuevamente.');
-      return;
-    }
-
-    const alumnoConSalon: Alumno = { ...alumno, salonId: salon.id };
-    await agregarAlumno(alumnoConSalon, apoderado);
-
-    router.push(`/confirmacion?alumnoId=${alumnoConSalon.id}`);
   }
 
   return (
@@ -57,11 +115,14 @@ export default function InscripcionPage() {
         </div>
 
         {errorEdad && (
-          <div
-            role="alert"
-            className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
+          <div role="alert" className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorEdad}
+          </div>
+        )}
+
+        {cargando && (
+          <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-700 text-center">
+            ⏳ Procesando inscripción...
           </div>
         )}
 

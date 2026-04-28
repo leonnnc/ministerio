@@ -23,7 +23,7 @@ type ModoEscaner = 'ingreso' | 'salida' | null;
 
 export default function CheckinPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
@@ -36,91 +36,76 @@ export default function CheckinPage() {
   const [modoEscaner, setModoEscaner] = useState<ModoEscaner>(null);
   const [alumnoEscaneado, setAlumnoEscaneado] = useState<Alumno | null>(null);
 
-  const fecha = hoyISO();
-
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
+
+  // ── Escáner QR
+  const handleEscaneo = useCallback(async (codigo: string) => {
+    const alumno = alumnos.find((a) => a.codigoQR === codigo || a.id === codigo);
+    if (!alumno) {
+      setMensaje({ texto: `❌ Código QR no reconocido: ${codigo}`, tipo: 'error' });
+      setTimeout(() => setMensaje(null), 4000);
+      return;
+    }
+
+    setAlumnoEscaneado(alumno);
+    setModoEscaner(null);
+
+    const registro = obtenerRegistroActivo(alumno.id, hoyISO(), servicioId);
+
+    if (modoEscaner === 'ingreso') {
+      if (registro) {
+        setMensaje({ texto: `⚠️ ${alumno.nombreCompleto} ya tiene ingreso registrado a las ${formatHora(registro.horaIngreso)}`, tipo: 'info' });
+        setTimeout(() => setMensaje(null), 4000);
+        return;
+      }
+      setCargando(alumno.id + '-in');
+      try {
+        await registrarIngreso(alumno.id, hoyISO(), servicioId, usuarioActual?.id ?? '');
+        setMensaje({ texto: `✅ Ingreso registrado: ${alumno.nombreCompleto}`, tipo: 'ok' });
+        setTimeout(() => setMensaje(null), 4000);
+      } finally { setCargando(null); }
+    } else if (modoEscaner === 'salida') {
+      if (!registro || registro.estado === 'entregado') {
+        setMensaje({ texto: `⚠️ ${alumno.nombreCompleto} no puede ser entregado`, tipo: 'info' });
+        setTimeout(() => setMensaje(null), 4000);
+        return;
+      }
+      setCargando(alumno.id + '-out');
+      try {
+        await registrarSalida(registro.id, usuarioActual?.id ?? '');
+        const apoderado = apoderados.find((ap) => ap.id === alumno.apoderadoId);
+        if (apoderado) {
+          const tel = (apoderado.whatsapp ?? apoderado.telefono).replace(/\D/g, '');
+          const salon = salones.find((s) => s.id === alumno.salonId);
+          const msg = encodeURIComponent(`Ministerio de Ninos\n\nHola ${apoderado.nombreCompleto}, tu hijo/a *${alumno.nombreCompleto}* ya esta listo para ser recogido.\n\nSalon: ${salon?.nombre ?? ''}\nHora: ${new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}\n\nDios te bendiga!`);
+          window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+        }
+        setMensaje({ texto: `✅ Salida registrada: ${alumno.nombreCompleto}`, tipo: 'ok' });
+        setTimeout(() => setMensaje(null), 4000);
+      } finally { setCargando(null); }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alumnos, apoderados, salones, servicioId, modoEscaner, usuarioActual, obtenerRegistroActivo, registrarIngreso, registrarSalida]);
 
   if (!usuarioActual) return null;
 
+  const fecha = hoyISO();
   const esMaestro = usuarioActual.rol === 'Maestro';
   const misSalones = esMaestro
     ? salones.filter((s) => s.maestroId === usuarioActual.id)
     : salones;
   const misSalonIds = misSalones.map((s) => s.id);
-
   const alumnosFiltrados = alumnos
     .filter((a) => misSalonIds.includes(a.salonId))
-    .filter((a) =>
-      busqueda.trim() === '' ||
-      a.nombreCompleto.toLowerCase().includes(busqueda.toLowerCase())
-    );
+    .filter((a) => busqueda.trim() === '' || a.nombreCompleto.toLowerCase().includes(busqueda.toLowerCase()));
 
   function mostrarMensaje(texto: string, tipo: 'ok' | 'error' | 'info') {
     setMensaje({ texto, tipo });
     setTimeout(() => setMensaje(null), 4000);
   }
-
-  // ── Escáner QR ──────────────────────────────────────────────────────────────
-  const handleEscaneo = useCallback(async (codigo: string) => {
-    // Buscar alumno por código QR
-    const alumno = alumnos.find((a) => a.codigoQR === codigo || a.id === codigo);
-    if (!alumno) {
-      mostrarMensaje(`❌ Código QR no reconocido: ${codigo}`, 'error');
-      return;
-    }
-
-    setAlumnoEscaneado(alumno);
-    setModoEscaner(null); // cerrar escáner
-
-    const registro = obtenerRegistroActivo(alumno.id, fecha, servicioId);
-
-    if (modoEscaner === 'ingreso') {
-      if (registro) {
-        mostrarMensaje(`⚠️ ${alumno.nombreCompleto} ya tiene ingreso registrado a las ${formatHora(registro.horaIngreso)}`, 'info');
-        return;
-      }
-      setCargando(alumno.id + '-in');
-      try {
-        await registrarIngreso(alumno.id, fecha, servicioId, usuarioActual!.id);
-        mostrarMensaje(`✅ Ingreso registrado: ${alumno.nombreCompleto}`, 'ok');
-      } finally {
-        setCargando(null);
-      }
-    } else if (modoEscaner === 'salida') {
-      if (!registro) {
-        mostrarMensaje(`⚠️ ${alumno.nombreCompleto} no tiene ingreso registrado`, 'info');
-        return;
-      }
-      if (registro.estado === 'entregado') {
-        mostrarMensaje(`ℹ️ ${alumno.nombreCompleto} ya fue entregado a las ${formatHora(registro.horaSalida)}`, 'info');
-        return;
-      }
-      setCargando(alumno.id + '-out');
-      try {
-        await registrarSalida(registro.id, usuarioActual!.id);
-        // WhatsApp al apoderado
-        const apoderado = apoderados.find((ap) => ap.id === alumno.apoderadoId);
-        if (apoderado) {
-          const tel = (apoderado.whatsapp ?? apoderado.telefono).replace(/\D/g, '');
-          const salon = salones.find((s) => s.id === alumno.salonId);
-          const msg = encodeURIComponent(
-            `✝️ *Ministerio de Niños*\n\n` +
-            `Hola ${apoderado.nombreCompleto}, tu hijo/a *${alumno.nombreCompleto}* ya está listo para ser recogido.\n\n` +
-            `🏫 Salón: ${salon?.nombre ?? ''}\n` +
-            `🕐 Hora: ${new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}\n\n` +
-            `Por favor acércate al salón. ¡Dios te bendiga! 🙏`
-          );
-          window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
-        }
-        mostrarMensaje(`✅ Salida registrada: ${alumno.nombreCompleto}`, 'ok');
-      } finally {
-        setCargando(null);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alumnos, apoderados, salones, fecha, servicioId, modoEscaner, usuarioActual]);
 
   // ── Acciones manuales ────────────────────────────────────────────────────────
   async function handleIngreso(alumno: Alumno) {

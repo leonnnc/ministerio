@@ -17,7 +17,7 @@ function formatFecha(iso: string) {
 
 export default function AsistenciaPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const salones = useSalonesStore((s) => s.salones);
   const { registros } = useAsistenciaStore();
@@ -26,8 +26,9 @@ export default function AsistenciaPage() {
   const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

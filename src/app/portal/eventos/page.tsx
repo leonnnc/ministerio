@@ -35,7 +35,7 @@ function esFuturo(fecha: string) {
 
 export default function EventosPage() {
   const router = useRouter();
-  const { usuarioActual, estaAutenticado } = useAuthStore();
+  const { usuarioActual, estaAutenticado, _hasHydrated } = useAuthStore();
   const { eventos, agregarEvento, eliminarEvento } = useEventosStore();
 
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -49,8 +49,9 @@ export default function EventosPage() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   if (!usuarioActual) return null;
 

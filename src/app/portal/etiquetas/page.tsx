@@ -18,7 +18,7 @@ function calcularEdad(fechaNacimiento: string): number {
 
 export default function EtiquetasPage() {
   const router = useRouter();
-  const { estaAutenticado } = useAuthStore();
+  const { estaAutenticado, _hasHydrated } = useAuthStore();
   const alumnos = useAlumnosStore((s) => s.alumnos);
   const apoderados = useAlumnosStore((s) => s.apoderados);
   const salones = useSalonesStore((s) => s.salones);
@@ -29,8 +29,9 @@ export default function EtiquetasPage() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!estaAutenticado) router.replace('/login');
-  }, [estaAutenticado, router]);
+  }, [_hasHydrated, estaAutenticado, router]);
 
   const alumnosFiltrados = alumnos.filter((a) =>
     salonFiltro === 'todos' || a.salonId === salonFiltro

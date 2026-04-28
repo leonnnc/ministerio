@@ -7,6 +7,9 @@ import FirestoreProvider from "@/components/FirestoreProvider";
 export const metadata: Metadata = {
   title: "Ministerio de Niños",
   description: "Sistema de gestión del Ministerio de Niños",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export const viewport: Viewport = {
