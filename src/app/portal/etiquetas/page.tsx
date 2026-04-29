@@ -25,7 +25,7 @@ export default function EtiquetasPage() {
   const printRef = useRef<HTMLDivElement>(null);
 
   const [salonFiltro, setSalonFiltro] = useState('todos');
-  const [servicioId, setServicioId] = useState(SERVICIOS_DOMINGO[0].id);
+  const [servicioId, setServicioId] = useState<string>(SERVICIOS_DOMINGO[0].id);
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
